@@ -760,145 +760,213 @@ function renderWeekly() {
     wrap.appendChild(block);
   }
 }
-function renderEpBlock(episode, wrap) {
+function renderEpBlock(episode, container) {
   const b        = episode.bracket;
   const queens   = BRACKETS[b].queens;
-  const epPicks  = myWeekly[episode.id] || {top2:[], lipsync:null};
+  const epId     = episode.id;
+  const epPicks  = myWeekly[epId] || {top2:[], lipsync:null};
   const isWLocked = epPicks.locked || episode.closed;
   const resTop2  = (episode.results||{}).top2 || [];
   const resLs    = (episode.results||{}).lipsync;
   const hasResults = resTop2.length > 0;
-
-  // score for this episode
   const t2Correct = (epPicks.top2||[]).filter(i => resTop2.includes(i)).length;
   const lsCorrect = epPicks.lipsync != null && epPicks.lipsync === resLs;
-  const weeklyPts = (hasResults && isWLocked)
-    ? t2Correct * PTS_TOP2 + (lsCorrect ? PTS_LIPSYNC : 0)
-    : 0;
+  const weeklyPts = (hasResults && isWLocked) ? t2Correct*PTS_TOP2+(lsCorrect?PTS_LIPSYNC:0) : 0;
 
-  const bracketColor = b; // orange / purple / pink
-  const bracketLabel = BRACKETS[b].label;
+  // ── Episode header card ──
+  const card = document.createElement('div'); card.className = 'ep-card';
+  const body = document.createElement('div'); body.className = 'ep-body';
+  const labelsDiv = document.createElement('div'); labelsDiv.className = 'ep-labels';
+  const numSpan = document.createElement('span'); numSpan.className = 'ep-num';
+  numSpan.textContent = episode.number || 'Episode';
+  const pillSpan = document.createElement('span');
+  pillSpan.className = `ep-bracket-pill ${b}`;
+  pillSpan.textContent = BRACKETS[b].label + ' Bracket';
+  labelsDiv.append(numSpan, pillSpan);
+  if (episode.closed) {
+    const cl = document.createElement('span'); cl.className = 'ep-closed-pill';
+    cl.textContent = '🔒 Picks Closed'; labelsDiv.appendChild(cl);
+  }
+  const titleDiv = document.createElement('div'); titleDiv.className = 'ep-title';
+  titleDiv.textContent = episode.title || "This Week's Challenge";
+  body.appendChild(labelsDiv); body.appendChild(titleDiv);
+  if (episode.desc) {
+    const descDiv = document.createElement('div'); descDiv.className = 'ep-desc';
+    descDiv.textContent = episode.desc; body.appendChild(descDiv);
+  }
+  const scoring = document.createElement('div'); scoring.className = 'ep-scoring';
+  scoring.innerHTML = `<div class="ep-score-item">Top 2: <strong>${PTS_TOP2} pts</strong> each</div><div class="ep-score-item">Lip sync: <strong>${PTS_LIPSYNC} pts</strong></div><div class="ep-score-item">Max: <strong>${PTS_TOP2*2+PTS_LIPSYNC} pts</strong></div>`;
+  body.appendChild(scoring); card.appendChild(body);
+  container.appendChild(card);
 
-  const epId = episode.id;
-  let html = `
-  <div class="ep-card">
-    <div class="ep-body">
-      <div class="ep-top">
-        <div class="ep-labels">
-          <span class="ep-num">${episode.number||'Episode'}</span>
-          <span class="ep-bracket-pill ${bracketColor}">${bracketLabel} Bracket</span>
-          ${episode.closed ? `<span class="ep-closed-pill">🔒 Picks Closed</span>` : ''}
-        </div>
-      </div>
-      <div class="ep-title">${episode.title||'This Week\'s Challenge'}</div>
-      ${episode.desc ? `<div class="ep-desc">${episode.desc}</div>` : ''}
-      <div class="ep-scoring">
-        <div class="ep-score-item">Top 2 queens: <strong>${PTS_TOP2} pts</strong> each</div>
-        <div class="ep-score-item">Lip sync winner: <strong>${PTS_LIPSYNC} pts</strong></div>
-        <div class="ep-score-item">Max weekly: <strong>${PTS_TOP2*2+PTS_LIPSYNC} pts</strong></div>
-      </div>
-    </div>
-  </div>`;
-
-  // score bar (shown when results exist)
+  // ── Score bar (after results) ──
   if (hasResults && isWLocked) {
-    html += `<div class="wp-scorebar">
-      <div class="wp-sc"><div class="wp-sc-lbl">Top 2 Correct</div><div class="wp-sc-val">${t2Correct}<span class="wp-sc-unit">/ 2</span></div></div>
-      <div class="wp-sc"><div class="wp-sc-lbl">Lip Sync</div><div class="wp-sc-val">${lsCorrect?'✓':'✗'}</div></div>
-      <div class="wp-sc wp-sc-total"><div class="wp-sc-lbl">⭐ Weekly Score</div><div class="wp-sc-val">${weeklyPts}<span class="wp-sc-unit">pts</span></div></div>
-    </div>`;
+    const sb = document.createElement('div'); sb.className = 'wp-scorebar';
+    sb.innerHTML = `<div class="wp-sc"><div class="wp-sc-lbl">Top 2 Correct</div><div class="wp-sc-val">${t2Correct}<span class="wp-sc-unit">/ 2</span></div></div><div class="wp-sc"><div class="wp-sc-lbl">Lip Sync</div><div class="wp-sc-val">${lsCorrect?'✓':'✗'}</div></div><div class="wp-sc wp-sc-total"><div class="wp-sc-lbl">⭐ Score</div><div class="wp-sc-val">${weeklyPts}<span class="wp-sc-unit">pts</span></div></div>`;
+    container.appendChild(sb);
   }
 
-  wrap.innerHTML = html;
-
-  // locked banner
+  // ── Locked summary banner ──
   if (isWLocked && epPicks.top2 && epPicks.top2.length) {
-    const banner = document.createElement('div');
-    banner.className = 'wp-locked-banner show';
-    banner.innerHTML = `<div class="wp-locked-title">${hasResults ? `🏆 Results Are In` : `✨ Picks Locked`}</div>
-      <div class="wp-locked-sub">${hasResults ? 'See how you did below' : 'Check back after the episode airs!'}</div>
-      <div class="wp-picks-display" id="wp-picks-display"></div>
-      ${!episode.closed ? `<button class="wp-edit-btn" id="wp-edit-btn">← Edit my picks</button>` : ''}`;
-    wrap.appendChild(banner);
-
-    // populate picks display
-    const disp = banner.querySelector('#wp-picks-display');
-    if (disp) {
-      epPicks.top2.forEach(i => {
-        const q = queens[i];
-        const correct = hasResults && resTop2.includes(i);
-        const wrong   = hasResults && !resTop2.includes(i);
-        const item = document.createElement('div'); item.className = 'wp-pick-item';
-        const img = mkImg(q.img, 'wp-pick-img top2');
-        const info = document.createElement('div'); info.className = 'wp-pick-info';
-        info.innerHTML = `<div class="wp-pick-name ${correct?'correct':wrong?'wrong':''}">${q.name}${correct?' ✓':wrong?' ✗':''}</div><div class="wp-pick-type">top 2 · ${PTS_TOP2}pts</div>`;
-        item.append(img, info); disp.appendChild(item);
-      });
-      if (epPicks.lipsync != null) {
-        const i = epPicks.lipsync, q = queens[i];
-        const correct = hasResults && i === resLs;
-        const wrong   = hasResults && i !== resLs;
+    const banner = document.createElement('div'); banner.className = 'wp-locked-banner show';
+    const bTitle = document.createElement('div'); bTitle.className = 'wp-locked-title';
+    bTitle.textContent = hasResults ? '🏆 Results Are In' : '✨ Picks Locked';
+    const bSub = document.createElement('div'); bSub.className = 'wp-locked-sub';
+    bSub.textContent = hasResults ? 'See how you did below' : 'Check back after the episode airs!';
+    const bDisp = document.createElement('div'); bDisp.className = 'wp-picks-display';
+    banner.append(bTitle, bSub, bDisp);
+    // populate pick items
+    epPicks.top2.forEach(i => {
+      const q = queens[i]; if (!q) return;
+      const correct = hasResults && resTop2.includes(i);
+      const wrong   = hasResults && !resTop2.includes(i);
+      const item = document.createElement('div'); item.className = 'wp-pick-item';
+      const img = mkImg(q.img, 'wp-pick-img top2');
+      const info = document.createElement('div'); info.className = 'wp-pick-info';
+      info.innerHTML = `<div class="wp-pick-name ${correct?'correct':wrong?'wrong':''}">${q.name}${correct?' ✓':wrong?' ✗':''}</div><div class="wp-pick-type">top 2 · ${PTS_TOP2}pts</div>`;
+      item.append(img, info); bDisp.appendChild(item);
+    });
+    if (epPicks.lipsync != null) {
+      const q = queens[epPicks.lipsync]; if (q) {
+        const correct = hasResults && epPicks.lipsync === resLs;
+        const wrong   = hasResults && epPicks.lipsync !== resLs;
         const item = document.createElement('div'); item.className = 'wp-pick-item';
         const img = mkImg(q.img, 'wp-pick-img lipsync');
         const info = document.createElement('div'); info.className = 'wp-pick-info';
         info.innerHTML = `<div class="wp-pick-name ${correct?'correct':wrong?'wrong':''}">${q.name}${correct?' ✓':wrong?' ✗':''}</div><div class="wp-pick-type">lip sync · ${PTS_LIPSYNC}pts</div>`;
-        item.append(img, info); disp.appendChild(item);
+        item.append(img, info); bDisp.appendChild(item);
       }
     }
-    const editBtn = banner.querySelector('#wp-edit-btn');
-    if (editBtn) editBtn.addEventListener('click', () => unlockWeekly(epId));
-    return; // don't show pick UI if locked
+    if (!episode.closed) {
+      const editBtn = document.createElement('button'); editBtn.className = 'wp-edit-btn';
+      editBtn.textContent = '← Edit my picks';
+      editBtn.addEventListener('click', () => { unlockWeekly(epId); renderWeekly(); });
+      banner.appendChild(editBtn);
+    }
+    container.appendChild(banner);
+    return;
   }
 
-  // ─── PICK FLOW ───
-  const stepsEl = document.createElement('div');
-  stepsEl.className = 'wp-steps';
+  // ── Pick flow ──
+  const steps = document.createElement('div'); steps.className = 'wp-steps';
 
-  // STEP 1 — Top 2
-  const step1 = document.createElement('div'); step1.className = 'wp-step';
-  step1.innerHTML = `
-    <div class="wp-step-header">
-      <div class="wp-step-left">
-        <span class="wp-step-num top2${epPicks.top2.length===2?' done':''}">
-          ${epPicks.top2.length===2?'✓':'1'}
-        </span>
-        <span class="wp-step-title top2">Pick Top 2</span>
-      </div>
-      <span class="wp-pts-badge">2 distinct queens · <strong>${PTS_TOP2} pts</strong> each</span>
-    </div>
-    <div class="wp-step-hint">Pick the 2 queens you think will place in the top this week</div>
-    <div class="wp-queen-list" id="wp-list-top2-${epId}"></div>`;
-  stepsEl.appendChild(step1);
+  // Step 1 — Top 2
+  const s1 = document.createElement('div'); s1.className = 'wp-step';
+  const s1hdr = document.createElement('div'); s1hdr.className = 'wp-step-header';
+  const s1left = document.createElement('div'); s1left.className = 'wp-step-left';
+  const s1num = document.createElement('span');
+  s1num.className = `wp-step-num top2${epPicks.top2.length===2?' done':''}`;
+  s1num.textContent = epPicks.top2.length===2 ? '✓' : '1';
+  const s1title = document.createElement('span'); s1title.className = 'wp-step-title top2';
+  s1title.textContent = 'Pick Top 2';
+  s1left.append(s1num, s1title);
+  const s1badge = document.createElement('span'); s1badge.className = 'wp-pts-badge';
+  s1badge.innerHTML = `2 distinct queens · <strong>${PTS_TOP2} pts</strong> each`;
+  s1hdr.append(s1left, s1badge);
+  const s1hint = document.createElement('div'); s1hint.className = 'wp-step-hint';
+  s1hint.textContent = 'Which 2 queens do you think will land in the top this week?';
+  const s1list = document.createElement('div'); s1list.className = 'wp-queen-list';
+  s1.append(s1hdr, s1hint, s1list);
 
-  // STEP 2 — Lip sync
-  const step2 = document.createElement('div'); step2.className = 'wp-step';
-  step2.innerHTML = `
-    <div class="wp-step-header">
-      <div class="wp-step-left">
-        <span class="wp-step-num lipsync${epPicks.lipsync!=null?' done':''}">
-          ${epPicks.lipsync!=null?'✓':'2'}
-        </span>
-        <span class="wp-step-title lipsync">Pick Lip Sync Winner</span>
-      </div>
-      <span class="wp-pts-badge">must be one of your Top 2 · <strong>${PTS_LIPSYNC} pts</strong></span>
-    </div>
-    <div id="wp-ls-area-${epId}"></div>`;
-  stepsEl.appendChild(step2);
+  // populate top2 queen rows
+  queens.forEach((q, i) => {
+    const isTop2 = epPicks.top2.includes(i);
+    const isFull = epPicks.top2.length >= 2 && !isTop2;
+    const row = document.createElement('div');
+    row.className = `wp-queen-row${isTop2?' sel-top2':''}${isFull?' wp-dim':''}`;
+    const img = document.createElement('img'); img.className='wp-photo'; img.src=q.img; img.loading='lazy'; img.onerror=()=>{img.src=FALLBACK};
+    const info = document.createElement('div');
+    info.innerHTML = `<div class="wp-qname">${q.name}</div><div class="wp-qseason">${q.season}</div>`;
+    const badge = document.createElement('div'); badge.className='wp-right';
+    badge.innerHTML = '<span class="wp-badge">TOP 2</span>';
+    row.append(img, info, badge);
+    row.addEventListener('click', () => {
+      if (isFull || episode.closed) return;
+      const ep = getOrInitEp(epId);
+      if (ep.top2.includes(i)) { ep.top2=ep.top2.filter(x=>x!==i); if(ep.lipsync===i)ep.lipsync=null; }
+      else if (ep.top2.length < 2) ep.top2.push(i);
+      saveLocalWeekly(); renderWeekly();
+    });
+    s1list.appendChild(row);
+  });
+  steps.appendChild(s1);
 
-  wrap.appendChild(stepsEl);
+  // Step 2 — Lip sync
+  const s2 = document.createElement('div'); s2.className = 'wp-step';
+  const s2hdr = document.createElement('div'); s2hdr.className = 'wp-step-header';
+  const s2left = document.createElement('div'); s2left.className = 'wp-step-left';
+  const s2num = document.createElement('span');
+  s2num.className = `wp-step-num lipsync${epPicks.lipsync!=null?' done':''}`;
+  s2num.textContent = epPicks.lipsync!=null ? '✓' : '2';
+  const s2title = document.createElement('span'); s2title.className = 'wp-step-title lipsync';
+  s2title.textContent = 'Lip Sync Winner';
+  s2left.append(s2num, s2title);
+  const s2badge = document.createElement('span'); s2badge.className = 'wp-pts-badge';
+  s2badge.innerHTML = `must be one of your Top 2 · <strong>${PTS_LIPSYNC} pts</strong>`;
+  s2hdr.append(s2left, s2badge);
+  s2.appendChild(s2hdr);
 
-  // Render queen rows for top 2
-  buildWpTop2Rows(queens, epPicks, b, epId);
-  buildWpLsArea(queens, epPicks, b, epId);
+  if (epPicks.top2.length < 2) {
+    const locked = document.createElement('div'); locked.className = 'wp-ls-locked';
+    locked.textContent = '← Complete Step 1 first to unlock the lip sync pick';
+    s2.appendChild(locked);
+  } else {
+    const hint = document.createElement('div'); hint.className = 'wp-step-hint';
+    hint.textContent = 'Which of your Top 2 wins the lip sync?';
+    const lsList = document.createElement('div'); lsList.className = 'wp-queen-list';
+    epPicks.top2.forEach(i => {
+      const q = queens[i]; if (!q) return;
+      const isLs = epPicks.lipsync === i;
+      const row = document.createElement('div');
+      row.className = `wp-queen-row${isLs?' sel-ls':''}`;
+      const img = document.createElement('img'); img.className='wp-photo'; img.src=q.img; img.loading='lazy'; img.onerror=()=>{img.src=FALLBACK};
+      const info = document.createElement('div');
+      info.innerHTML = `<div class="wp-qname">${q.name}</div><div class="wp-qseason">${q.season}</div>`;
+      const badge = document.createElement('div'); badge.className='wp-right';
+      badge.innerHTML = '<span class="wp-badge">LIPSYNC</span>';
+      row.append(img, info, badge);
+      row.addEventListener('click', () => {
+        if (episode.closed) return;
+        const ep = getOrInitEp(epId);
+        ep.lipsync = ep.lipsync===i ? null : i;
+        saveLocalWeekly(); renderWeekly();
+      });
+      lsList.appendChild(row);
+    });
+    s2.append(hint, lsList);
+  }
+  steps.appendChild(s2);
+  container.appendChild(steps);
 
-  // Submit button
-  const submitWrap = document.createElement('div'); submitWrap.className = 'wp-submit-wrap';
-  const canSubmit = epPicks.top2.length === 2 && epPicks.lipsync != null && !isWLocked;
-  submitWrap.innerHTML = `
-    <button class="wp-submit-btn" id="wp-submit-btn-${epId}" ${canSubmit?'':'disabled'}>Lock In Weekly Picks</button>
-    <div class="wp-submit-note" id="wp-submit-note-${epId}">${wpSubmitNote(epPicks)}</div>`;
-  wrap.appendChild(submitWrap);
-  document.getElementById(`wp-submit-btn-${epId}`).addEventListener('click', () => lockWeeklyPicks(epId));
+  // Submit button — pure DOM, no getElementById
+  const canSubmit = epPicks.top2.length===2 && epPicks.lipsync!=null && !isWLocked;
+  const sw = document.createElement('div'); sw.className = 'wp-submit-wrap';
+  const subBtn = document.createElement('button'); subBtn.className = 'wp-submit-btn';
+  subBtn.disabled = !canSubmit;
+  subBtn.textContent = 'Lock In Weekly Picks';
+  let subNote_text = epPicks.top2.length < 2
+    ? `Pick your Top 2 queens first (${epPicks.top2.length} / 2 selected)`
+    : epPicks.lipsync == null ? 'Now pick your lip sync winner from your Top 2'
+    : 'All picks made! Lock them in.';
+  const subNote = document.createElement('div'); subNote.className = 'wp-submit-note';
+  subNote.textContent = subNote_text;
+  subBtn.addEventListener('click', async () => {
+    if (!myName) { alert("Enter your drag name first!"); return; }
+    const ep = myWeekly[epId];
+    if (!ep || ep.top2.length < 2 || ep.lipsync == null) return;
+    subBtn.textContent = '⏳ Saving…'; subBtn.disabled = true;
+    try {
+      ep.locked = true; saveLocalWeekly();
+      await db.collection('entries').doc(myName).set({ name:myName, weekly:myWeekly }, { merge:true });
+      renderWeekly();
+    } catch(err) {
+      alert('Error saving: '+err.message);
+      ep.locked = false; saveLocalWeekly();
+      subBtn.textContent = 'Lock In Weekly Picks'; subBtn.disabled = false;
+    }
+  });
+  sw.append(subBtn, subNote);
+  container.appendChild(sw);
 }
 
 function wpSubmitNote(epPicks) {
@@ -974,11 +1042,10 @@ function saveLocalWeekly() {
   localStorage.setItem('as11_weekly', JSON.stringify(myWeekly));
 }
 
-async function lockWeeklyPicks(epId) {
+async function lockWeeklyPicks(epId, btn) {
   if (!myName) { alert("Enter your drag name first!"); return; }
   const ep = myWeekly[epId];
   if (!ep || ep.top2.length < 2 || ep.lipsync == null) return;
-  const btn = document.getElementById('wp-submit-btn-'+epId);
   if(btn){btn.textContent = '⏳ Saving…'; btn.disabled = true;}
   try {
     ep.locked = true;
