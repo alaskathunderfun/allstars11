@@ -283,6 +283,9 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .lb-table td{padding:.9rem 1rem;border-bottom:1px solid var(--border);font-size:.85rem;vertical-align:middle}
 .lb-table tr:last-child td{border-bottom:none}
 .lb-table tbody tr:hover td{background:rgba(255,255,255,.02)}
+.lb-table tbody tr.clickable:hover td{background:rgba(255,255,255,.04);cursor:pointer}
+.player-link{color:var(--text);border-bottom:1px dotted var(--muted);cursor:pointer}
+.player-link:hover{color:var(--gold);border-color:var(--gold)}
 .rank-cell{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--muted);width:44px}
 .rank-1{color:var(--gold)}.rank-2{color:#c8c8d8}.rank-3{color:#cd9f4c}
 .player-cell{font-weight:500}
@@ -371,6 +374,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 <div class="name-section" id="name-section">
   <h2>Who's Playing?</h2>
   <p>Enter your drag name to save your bracket and join the leaderboard</p>
+  <p style="font-size:.72rem;color:var(--pink);letter-spacing:.04em;margin-bottom:1rem">⚠️ Names are case-sensitive — use the exact same spelling each time</p>
   <div class="name-row">
     <input class="name-input" id="name-input" type="text" placeholder="your drag name…" maxlength="40" autocomplete="off"/>
     <button class="name-btn" id="name-btn">Sashay In →</button>
@@ -402,20 +406,23 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     <div class="sc"><div class="sc-lbl">🩷 Pink</div><div class="sc-val" id="sc-pink">0<span class="sc-unit">/ 2</span></div></div>
     <div class="sc"><div class="sc-lbl">⭐ Score</div><div class="sc-val" id="sc-pts">0<span class="sc-unit">pts</span></div></div>
   </div>
+  <div class="global-lock-banner" id="global-lock-banner" style="display:none;max-width:1300px;margin:0 auto 1.5rem;padding:0 1.5rem">
+    <div style="background:linear-gradient(135deg,rgba(247,37,127,.08),rgba(180,76,240,.08));border:1px solid var(--pkg);border-radius:var(--r);padding:1rem 1.5rem;text-align:center;font-size:.82rem;color:var(--pink)">🔒 <strong style="color:var(--text)">Overall picks are now locked.</strong> The show has started — no more changes to bracket predictions.</div>
+  </div>
   <div class="instruction">Pick <strong>2 queens</strong> per bracket · Each correct pick = <strong>25 pts</strong> · Top 2 per bracket advance to semi-finals</div>
   <div class="locked-banner" id="locked-banner">
     <div class="locked-inner">
       <div class="locked-title">✨ Overall Picks Locked ✨</div>
       <div class="locked-sub" id="locked-sub">Check back after each bracket airs to watch your score grow</div>
       <div class="picks-chips" id="picks-chips"></div>
-      <div><button class="edit-btn" id="edit-btn">← Edit my picks</button></div>
+      <div id="edit-btn-wrap"><button class="edit-btn" id="edit-btn">← Edit my picks</button></div>
     </div>
   </div>
   <div class="brackets" id="brackets-container">
     <div class="bracket orange">
       <div class="bracket-header">
         <div class="bracket-title"><span class="bdot"></span> Orange Bracket</div>
-        <div class="bracket-meta"><span class="bracket-sub">Group Stage</span><span class="pick-counter">Picks: <strong id="cnt-orange">0</strong> / 2</span></div>
+        <div class="bracket-meta"><span class="bracket-sub">Episode 1 · Group Stage</span><span class="pick-counter">Picks: <strong id="cnt-orange">0</strong> / 2</span></div>
       </div>
       <div class="result-strip" id="strip-orange">🏆 Advancing: <span class="rnames" id="rnames-orange"></span></div>
       <div class="queens-list" id="list-orange"></div>
@@ -423,7 +430,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     <div class="bracket purple">
       <div class="bracket-header">
         <div class="bracket-title"><span class="bdot"></span> Purple Bracket</div>
-        <div class="bracket-meta"><span class="bracket-sub">Group Stage</span><span class="pick-counter">Picks: <strong id="cnt-purple">0</strong> / 2</span></div>
+        <div class="bracket-meta"><span class="bracket-sub">Episode 2 · Group Stage</span><span class="pick-counter">Picks: <strong id="cnt-purple">0</strong> / 2</span></div>
       </div>
       <div class="result-strip" id="strip-purple">🏆 Advancing: <span class="rnames" id="rnames-purple"></span></div>
       <div class="queens-list" id="list-purple"></div>
@@ -431,13 +438,13 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
     <div class="bracket pink">
       <div class="bracket-header">
         <div class="bracket-title"><span class="bdot"></span> Pink Bracket</div>
-        <div class="bracket-meta"><span class="bracket-sub">Group Stage</span><span class="pick-counter">Picks: <strong id="cnt-pink">0</strong> / 2</span></div>
+        <div class="bracket-meta"><span class="bracket-sub">Episode 3 · Group Stage</span><span class="pick-counter">Picks: <strong id="cnt-pink">0</strong> / 2</span></div>
       </div>
       <div class="result-strip" id="strip-pink">🏆 Advancing: <span class="rnames" id="rnames-pink"></span></div>
       <div class="queens-list" id="list-pink"></div>
     </div>
   </div>
-  <div class="submit-wrap">
+  <div class="submit-wrap" id="submit-wrap">
     <button class="submit-btn" id="submit-btn" disabled>Lock In My Picks</button>
     <div class="submit-note" id="submit-note">Select 2 queens from each bracket to continue (0 / 6 selected)</div>
   </div>
@@ -478,42 +485,23 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
       </div>
       <div class="admin-notice" id="admin-notice">✓ Saved!</div>
 
-      <!-- WEEKLY EPISODE -->
-      <div class="admin-section">🎤 Weekly Episode</div>
+      <!-- GLOBAL LOCK -->
+      <div class="admin-section" style="font-family:'Bebas Neue';font-size:1.35rem;letter-spacing:.08em;color:var(--text);margin:2.5rem 0 1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)">🔒 Global Settings</div>
       <div class="admin-card">
-        <div class="admin-card-title gold">Episode Configuration</div>
-        <div class="admin-form-row">
-          <span class="admin-label">Episode Number / Label</span>
-          <input class="admin-input" id="adm-ep-num" placeholder="Episode 1"/>
-        </div>
-        <div class="admin-form-row">
-          <span class="admin-label">Challenge Name</span>
-          <input class="admin-input" id="adm-ep-title" placeholder="RuMix — Girl Group Challenge"/>
-        </div>
-        <div class="admin-form-row">
-          <span class="admin-label">Description (optional)</span>
-          <textarea class="admin-input admin-textarea" id="adm-ep-desc" placeholder="A brief description of the challenge…"></textarea>
-        </div>
-        <div class="admin-form-row">
-          <span class="admin-label">Competing Bracket</span>
-          <select class="admin-input admin-select" id="adm-ep-bracket">
-            <option value="orange">Orange Bracket</option>
-            <option value="purple">Purple Bracket</option>
-            <option value="pink">Pink Bracket</option>
-          </select>
-        </div>
         <div class="admin-toggle-row">
-          <span class="admin-toggle-label">🔒 Lock picks (prevent new submissions)</span>
-          <label class="tog"><input type="checkbox" id="adm-ep-closed"/><span class="tog-sl"></span></label>
+          <span class="admin-toggle-label">🔒 Lock all overall picks globally (show has started)</span>
+          <label class="tog"><input type="checkbox" id="adm-global-lock"/><span class="tog-sl"></span></label>
         </div>
+        <p style="font-size:.72rem;color:var(--muted);margin-top:.6rem;line-height:1.6">When on, no one can edit or submit overall bracket picks.</p>
       </div>
+      <button class="admin-save" id="adm-global-save">Save Global Settings</button>
 
-      <div class="admin-card">
-        <div class="admin-card-title gold">Actual Results — Top 2 & Lip Sync Winner</div>
-        <p style="font-size:.65rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.6">Mark the 2 queens who placed in the top, then mark which of those 2 won the lip sync.</p>
-        <div id="adm-ep-queens"></div>
+      <!-- WEEKLY EPISODES -->
+      <div style="display:flex;align-items:center;justify-content:space-between;font-family:'Bebas Neue';font-size:1.35rem;letter-spacing:.08em;color:var(--text);margin:2.5rem 0 1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)">
+        🎤 Weekly Episodes
+        <button id="adm-add-ep" style="font-family:'Bebas Neue';font-size:.9rem;letter-spacing:.08em;padding:.4rem 1rem;border:1px solid var(--borderb);border-radius:4px;background:transparent;color:var(--text);cursor:pointer">+ Add Episode</button>
       </div>
-      <button class="admin-save" id="adm-ep-save">Save Episode Config & Results</button>
+      <div id="adm-ep-list"><div style="padding:2rem;text-align:center;font-size:.8rem;color:var(--muted)">No episodes yet — click + Add Episode.</div></div>
 
       <!-- OVERALL BRACKET RESULTS -->
       <div class="admin-section">🏆 Overall Bracket Results</div>
@@ -597,14 +585,11 @@ let myWeekly     = JSON.parse(localStorage.getItem('as11_weekly') || '{}');
 
 // server state
 let winners      = {orange:[],purple:[],pink:[]};
-let episode      = null;   // current episode doc from Firestore
+let episodes     = [];     // array of episode docs from Firestore
 let lbUnsub      = null;
 
 // admin drafts
 let adminDraft   = {orange:[],purple:[],pink:[]};
-let admEpDraft   = {};     // episode config fields
-let admTop2Draft = [];     // indices into episode bracket queens
-let admLsDraft   = null;   // index of lip sync winner
 
 // ═══════════════════════════════════════════════════
 //  ⑤ SCORE CALCULATORS
@@ -615,16 +600,16 @@ function calcOverall(picks) {
 }
 
 function calcWeekly(weeklyPicks) {
-  // weeklyPicks = {epId: {top2:[], lipsync:idx}}
-  // episode = current Firestore episode doc
-  if (!episode || !episode.results) return 0;
   let pts = 0;
-  const ep = weeklyPicks[episode.id];
-  if (!ep) return 0;
-  const resTop2 = episode.results.top2 || [];
-  const resLs   = episode.results.lipsync;
-  (ep.top2||[]).forEach(i => { if (resTop2.includes(i)) pts += PTS_TOP2; });
-  if (ep.lipsync != null && ep.lipsync === resLs) pts += PTS_LIPSYNC;
+  for (const ep of episodes) {
+    if (!ep.results) continue;
+    const epPick = (weeklyPicks||{})[ep.id];
+    if (!epPick) continue;
+    const resTop2 = ep.results.top2 || [];
+    const resLs   = ep.results.lipsync;
+    (epPick.top2||[]).forEach(i => { if (resTop2.includes(i)) pts += PTS_TOP2; });
+    if (epPick.lipsync != null && epPick.lipsync === resLs) pts += PTS_LIPSYNC;
+  }
   return pts;
 }
 
@@ -670,7 +655,7 @@ function buildOverallRows() {
 }
 
 function toggleOverall(b, i) {
-  if (isLocked) return;
+  if (isLocked || globalLocked) return;
   const sel = myPicks[b];
   myPicks[b] = sel.includes(i) ? sel.filter(x=>x!==i) : (sel.length < MAX_OVERALL ? [...sel,i] : sel);
   refreshBracket(b);
@@ -693,10 +678,10 @@ function refreshBracket(b) {
   if (w.length) { strip.classList.add('show'); rn.textContent = w.map(i=>BRACKETS[b].queens[i].name).join(' & '); }
   else strip.classList.remove('show');
   const tot = totalSel(myPicks);
-  document.getElementById('submit-btn').disabled = tot < 6;
+  document.getElementById('submit-btn').disabled = tot < 6 || isLocked || globalLocked;
   document.getElementById('submit-note').textContent = tot < 6
     ? `Select 2 queens from each bracket to continue (${tot} / 6 selected)`
-    : `All picks made! Lock them in.`;
+    : globalLocked ? 'Overall picks are globally locked!' : `All picks made! Lock them in.`;
 }
 
 function refreshAllBrackets() { COLORS.forEach(b => refreshBracket(b)); }
@@ -762,10 +747,22 @@ function showLockedBanner() {
 // ═══════════════════════════════════════════════════
 function renderWeekly() {
   const wrap = document.getElementById('weekly-wrap');
-  if (!episode) {
-    wrap.innerHTML = `<div class="no-ep"><div class="no-ep-icon">🎤</div><h3>No Active Episode</h3><p>The admin hasn't set up this week's episode yet.<br>Check back soon!</p></div>`;
+  if (!episodes.length) {
+    wrap.innerHTML = `<div class="no-ep"><div class="no-ep-icon">🎤</div><h3>No Active Episodes</h3><p>The admin hasn't set up any episodes yet.<br>Check back soon!</p></div>`;
     return;
   }
+  wrap.innerHTML = '';
+  for (const episode of episodes) {
+    const block = document.createElement('div');
+    block.style.marginBottom = '3rem';
+    renderEpBlock(episode, block);
+    wrap.appendChild(block);
+  }
+}
+function renderWeekly_UNUSED_STUB() {
+  const episode = episodes[0]; // stub
+  if (!episode) { return; }
+function renderEpBlock(episode, wrap) {
   const b        = episode.bracket;
   const queens   = BRACKETS[b].queens;
   const epPicks  = myWeekly[episode.id] || {top2:[], lipsync:null};
@@ -1009,6 +1006,8 @@ function unlockWeekly() {
   renderWeekly();
 }
 
+} // end renderEpBlock
+
 // ═══════════════════════════════════════════════════
 //  ⑩ LEADERBOARD — real-time
 // ═══════════════════════════════════════════════════
@@ -1032,14 +1031,16 @@ function startLeaderboard() {
 }
 
 function calcWeeklyForEntry(weeklyData) {
-  if (!episode || !episode.results) return 0;
-  const ep = weeklyData[episode.id];
-  if (!ep) return 0;
-  const resTop2 = episode.results.top2 || [];
-  const resLs   = episode.results.lipsync;
   let pts = 0;
-  (ep.top2||[]).forEach(i => { if (resTop2.includes(i)) pts += PTS_TOP2; });
-  if (ep.lipsync != null && ep.lipsync === resLs) pts += PTS_LIPSYNC;
+  for (const ep of episodes) {
+    if (!ep.results) continue;
+    const epPick = (weeklyData||{})[ep.id];
+    if (!epPick) continue;
+    const resTop2 = ep.results.top2 || [];
+    const resLs   = ep.results.lipsync;
+    (epPick.top2||[]).forEach(i => { if (resTop2.includes(i)) pts += PTS_TOP2; });
+    if (epPick.lipsync != null && epPick.lipsync === resLs) pts += PTS_LIPSYNC;
+  }
   return pts;
 }
 
@@ -1055,9 +1056,9 @@ function renderLeaderboard(sorted) {
   sorted.forEach((e, idx) => {
     const r = idx + 1;
     const icon = r===1?'👑':r===2?'🥈':r===3?'🥉':r;
-    html += `<tr>
+    html += `<tr class="clickable" data-player="${encodeURIComponent(e.name)}">
       <td class="rank-cell ${r<=3?'rank-'+r:''}">${icon}</td>
-      <td class="player-cell">${e.name}</td>
+      <td class="player-cell"><span class="player-link">${e.name}</span></td>
       <td>
         <div class="score-breakdown">
           <div class="score-sub">Overall: <span>${e.overallPts} pts</span></div>
@@ -1069,6 +1070,10 @@ function renderLeaderboard(sorted) {
   });
   html += '</tbody></table>';
   el.innerHTML = html;
+  // wire row clicks → open profile
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => openProfile(decodeURIComponent(row.dataset.player)));
+  });
 }
 
 // ═══════════════════════════════════════════════════
@@ -1076,42 +1081,59 @@ function renderLeaderboard(sorted) {
 // ═══════════════════════════════════════════════════
 async function loadConfig() {
   try {
-    // winners
     const wDoc = await db.collection('config').doc('winners').get();
-    if (wDoc.exists) {
-      winners = wDoc.data();
-      adminDraft = JSON.parse(JSON.stringify(winners));
-    }
-    // episode
-    const eDoc = await db.collection('config').doc('episode').get();
-    if (eDoc.exists) episode = eDoc.data();
+    if (wDoc.exists) { winners = wDoc.data(); adminDraft = JSON.parse(JSON.stringify(winners)); }
+    const sDoc = await db.collection('config').doc('settings').get();
+    if (sDoc.exists) globalLocked = !!(sDoc.data().globalLocked);
+    const epSnap = await db.collection('episodes').orderBy('createdAt','asc').get();
+    episodes = [];
+    epSnap.forEach(d => episodes.push({id:d.id,...d.data()}));
   } catch(e) { console.warn('loadConfig:', e); }
 }
 
+// global lock state
+let globalLocked = false;
+
 function watchConfig() {
   db.collection('config').doc('winners').onSnapshot(d => {
-    if (d.exists) {
-      winners = d.data();
-      refreshAllBrackets(); refreshOverallScore();
-      if (isLocked) showLockedBanner();
-    }
+    if (d.exists) { winners = d.data(); refreshAllBrackets(); refreshOverallScore(); if(isLocked)showLockedBanner(); }
   });
-  db.collection('config').doc('episode').onSnapshot(d => {
-    if (d.exists) {
-      episode = d.data();
-      // re-render weekly if that tab is active
-      if (document.getElementById('panel-weekly').classList.contains('active'))
-        renderWeekly();
-    }
+  db.collection('config').doc('settings').onSnapshot(d => {
+    if (d.exists) { globalLocked=!!(d.data().globalLocked); applyGlobalLock(); refreshAllBrackets(); }
   });
+  db.collection('episodes').orderBy('createdAt','asc').onSnapshot(snap => {
+    episodes = [];
+    snap.forEach(d => episodes.push({id:d.id,...d.data()}));
+    if (document.getElementById('panel-weekly').classList.contains('active')) renderWeekly();
+  });
+}
+
+function applyGlobalLock() {
+  const banner = document.getElementById('global-lock-banner');
+  if (banner) banner.style.display = globalLocked ? 'block' : 'none';
+  const editWrap = document.getElementById('edit-btn-wrap');
+  if (editWrap) editWrap.style.display = globalLocked ? 'none' : '';
+  if (globalLocked && !isLocked) {
+    document.getElementById('submit-wrap') && (document.getElementById('submit-wrap').style.display='none');
+    document.getElementById('brackets-container').style.opacity='.55';
+    document.getElementById('brackets-container').style.pointerEvents='none';
+  } else if (!globalLocked && !isLocked) {
+    document.getElementById('submit-wrap') && (document.getElementById('submit-wrap').style.display='');
+    document.getElementById('brackets-container').style.opacity='1';
+    document.getElementById('brackets-container').style.pointerEvents='auto';
+  }
 }
 
 // ═══════════════════════════════════════════════════
 //  ⑫ ADMIN — build panels
 // ═══════════════════════════════════════════════════
+// admEpsDraft is array of episode drafts
+let admEpsDraft = [];
+
 function buildAdminPanel() {
   buildOverallAdmin();
-  buildEpisodeAdmin();
+  buildEpisodeAdminList();
+  document.getElementById('adm-global-lock').checked = globalLocked;
 }
 
 function buildOverallAdmin() {
@@ -1147,74 +1169,7 @@ function buildOverallAdmin() {
   }
 }
 
-function buildEpisodeAdmin() {
-  // Pre-fill from existing episode config
-  const ep = episode || {};
-  document.getElementById('adm-ep-num').value    = ep.number || '';
-  document.getElementById('adm-ep-title').value  = ep.title  || '';
-  document.getElementById('adm-ep-desc').value   = ep.desc   || '';
-  document.getElementById('adm-ep-bracket').value = ep.bracket || 'orange';
-  document.getElementById('adm-ep-closed').checked = !!ep.closed;
-  admEpDraft    = { number: ep.number||'', title: ep.title||'', desc: ep.desc||'', bracket: ep.bracket||'orange', closed: !!ep.closed };
-  admTop2Draft  = (ep.results||{}).top2  || [];
-  admLsDraft    = (ep.results||{}).lipsync ?? null;
-  buildEpQueenToggles();
 
-  // Rebuild when bracket changes
-  document.getElementById('adm-ep-bracket').addEventListener('change', e => {
-    admEpDraft.bracket = e.target.value;
-    admTop2Draft = []; admLsDraft = null;
-    buildEpQueenToggles();
-  });
-}
-
-function buildEpQueenToggles() {
-  const b     = admEpDraft.bracket || 'orange';
-  const queens = BRACKETS[b].queens;
-  const wrap  = document.getElementById('adm-ep-queens');
-  wrap.innerHTML = '';
-
-  queens.forEach((q, i) => {
-    const row = document.createElement('div'); row.className = 'admin-queen-row';
-    const photo = mkImg(q.img, 'admin-photo');
-    const name = document.createElement('span'); name.className = 'admin-qname'; name.textContent = q.name;
-    const btns = document.createElement('div'); btns.className = 'admin-btns';
-
-    // TOP 2 toggle
-    const t2Btn = document.createElement('button');
-    t2Btn.className = `wtoggle${admTop2Draft.includes(i)?' act-t2':''}`;
-    t2Btn.textContent = admTop2Draft.includes(i) ? '✓ Top 2' : 'Top 2';
-    t2Btn.addEventListener('click', () => {
-      if (admTop2Draft.includes(i)) {
-        admTop2Draft = admTop2Draft.filter(x=>x!==i);
-        if (admLsDraft===i) admLsDraft=null;
-        t2Btn.classList.remove('act-t2'); t2Btn.textContent='Top 2';
-        // update lipsync button state
-        buildEpQueenToggles();
-      } else if (admTop2Draft.length < 2) {
-        admTop2Draft.push(i);
-        t2Btn.classList.add('act-t2'); t2Btn.textContent='✓ Top 2';
-        buildEpQueenToggles();
-      }
-    });
-
-    // LIPSYNC toggle — only enabled if queen is in top2
-    const lsBtn = document.createElement('button');
-    const inTop2 = admTop2Draft.includes(i);
-    lsBtn.className = `wtoggle${admLsDraft===i?' act-ls':''}`;
-    lsBtn.textContent = admLsDraft===i ? '💋 Lip Sync' : 'Lip Sync';
-    if (!inTop2) { lsBtn.disabled = true; lsBtn.style.opacity='.3'; }
-    lsBtn.addEventListener('click', () => {
-      if (!admTop2Draft.includes(i)) return;
-      admLsDraft = (admLsDraft===i) ? null : i;
-      buildEpQueenToggles();
-    });
-
-    btns.append(t2Btn, lsBtn);
-    row.append(photo, name, btns);
-    wrap.appendChild(row);
-  });
-}
 
 async function saveOverallResults() {
   const btn = document.getElementById('admin-save');
@@ -1231,26 +1186,180 @@ async function saveOverallResults() {
   }
 }
 
-async function saveEpisodeConfig() {
-  const btn = document.getElementById('adm-ep-save');
-  btn.textContent = '⏳ Saving…'; btn.disabled = true;
-  const bracket = document.getElementById('adm-ep-bracket').value;
-  const epData = {
-    id:      `ep_${document.getElementById('adm-ep-num').value.replace(/\s+/g,'_').toLowerCase() || Date.now()}`,
-    number:  document.getElementById('adm-ep-num').value,
-    title:   document.getElementById('adm-ep-title').value,
-    desc:    document.getElementById('adm-ep-desc').value,
-    bracket: bracket,
-    closed:  document.getElementById('adm-ep-closed').checked,
-    results: { top2: admTop2Draft, lipsync: admLsDraft }
-  };
+function buildEpisodeAdminList() {
+  admEpsDraft = episodes.map(ep => ({
+    ...ep,
+    top2Draft: (ep.results||{}).top2||[],
+    lsDraft:   (ep.results||{}).lipsync ?? null
+  }));
+  renderAdminEpList();
+  if (admEpsDraft.length && !document.getElementById('adm-ep-save-all')) {
+    addSaveEpisodesBtn();
+  }
+}
+
+function renderAdminEpList() {
+  const wrap = document.getElementById('adm-ep-list');
+  if (!admEpsDraft.length) {
+    wrap.innerHTML = '<div style="padding:2rem;text-align:center;font-size:.8rem;color:var(--muted)">No episodes yet — click + Add Episode.</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  admEpsDraft.forEach((ep, idx) => {
+    const item = document.createElement('div');
+    item.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem';
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'padding:.85rem 1.2rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none';
+    hdr.innerHTML = `
+      <div style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;font-weight:500">
+        <span style="font-family:Bebas Neue;font-size:1.1rem;letter-spacing:.05em">${ep.number||`Episode ${idx+1}`}</span>
+        <span class="ep-bracket-pill ${ep.bracket||'orange'}" style="font-size:.6rem">${BRACKETS[ep.bracket||'orange'].label}</span>
+        ${ep.closed?`<span class="ep-closed-pill" style="font-size:.6rem">🔒</span>`:''}
+      </div>
+      <button data-idx="${idx}" style="font-family:DM Mono;font-size:.65rem;letter-spacing:.08em;padding:.25rem .65rem;border:1px solid rgba(247,37,127,.3);background:transparent;color:var(--pink);border-radius:3px;cursor:pointer">Remove</button>`;
+    hdr.querySelector('[data-idx]').addEventListener('click', e => {
+      e.stopPropagation();
+      if (confirm('Remove this episode?')) { admEpsDraft.splice(idx,1); renderAdminEpList(); }
+    });
+    const body = document.createElement('div');
+    body.id = `adm-ep-body-${idx}`;
+    body.style.cssText = 'display:none;border-top:1px solid var(--border);padding:1.2rem';
+    body.innerHTML = buildEpFormHTML(ep, idx);
+    hdr.addEventListener('click', e => { if(e.target.dataset.idx!=null) return; body.style.display = body.style.display==='none'?'block':'none'; });
+    item.append(hdr, body);
+    wrap.appendChild(item);
+    wireEpToggles(idx);
+    const bs = body.querySelector('#adm-ep-bracket-'+idx);
+    if (bs) bs.addEventListener('change', e => {
+      admEpsDraft[idx].bracket=e.target.value; admEpsDraft[idx].top2Draft=[]; admEpsDraft[idx].lsDraft=null;
+      renderAdminEpList();
+      const b2=document.getElementById('adm-ep-body-'+idx); if(b2)b2.style.display='block';
+    });
+  });
+}
+
+function buildEpFormHTML(ep, idx) {
+  return `
+    <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+      <span style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Episode Label</span>
+      <input class="admin-input" id="adm-ep-num-${idx}" value="${ep.number||''}" placeholder="Episode 1"/>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+      <span style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Challenge Name</span>
+      <input class="admin-input" id="adm-ep-title-${idx}" value="${ep.title||''}" placeholder="RuMix — Girl Group Challenge"/>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+      <span style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Description</span>
+      <textarea class="admin-input" style="resize:vertical;min-height:60px" id="adm-ep-desc-${idx}" placeholder="Brief description…">${ep.desc||''}</textarea>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem">
+      <span style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Competing Bracket</span>
+      <select class="admin-input" style="appearance:none;background-color:var(--card2);cursor:pointer" id="adm-ep-bracket-${idx}">
+        <option value="orange" ${ep.bracket==='orange'?'selected':''}>Orange Bracket</option>
+        <option value="purple" ${ep.bracket==='purple'?'selected':''}>Purple Bracket</option>
+        <option value="pink" ${ep.bracket==='pink'?'selected':''}>Pink Bracket</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:.8rem;padding:.4rem 0;margin-bottom:1rem">
+      <span style="font-size:.82rem;flex:1">🔒 Lock picks (prevent new submissions)</span>
+      <label class="tog"><input type="checkbox" id="adm-ep-closed-${idx}" ${ep.closed?'checked':''}/><span class="tog-sl"></span></label>
+    </div>
+    <div style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:.8rem">Actual Results</div>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">Mark Top 2, then mark which won the lip sync.</p>
+    <div id="adm-ep-queens-${idx}"></div>`;
+}
+
+function wireEpToggles(idx) {
+  const ep=admEpsDraft[idx]; const b=ep.bracket||'orange'; const queens=BRACKETS[b].queens;
+  const wrap=document.getElementById('adm-ep-queens-'+idx);
+  if(!wrap) return;
+  wrap.innerHTML='';
+  queens.forEach((q,i)=>{
+    const row=document.createElement('div'); row.className='admin-queen-row';
+    const photo=mkImg(q.img,'admin-photo');
+    const name=document.createElement('span'); name.className='admin-qname'; name.textContent=q.name;
+    const btns=document.createElement('div'); btns.className='admin-btns';
+    const t2=document.createElement('button');
+    t2.className=`wtoggle${ep.top2Draft.includes(i)?' act-t2':''}`;
+    t2.textContent=ep.top2Draft.includes(i)?'✓ Top 2':'Top 2';
+    t2.addEventListener('click',()=>{
+      if(ep.top2Draft.includes(i)){ep.top2Draft=ep.top2Draft.filter(x=>x!==i);if(ep.lsDraft===i)ep.lsDraft=null;}
+      else if(ep.top2Draft.length<2)ep.top2Draft.push(i);
+      wireEpToggles(idx);
+    });
+    const ls=document.createElement('button');
+    const inT2=ep.top2Draft.includes(i);
+    ls.className=`wtoggle${ep.lsDraft===i?' act-ls':''}`;
+    ls.textContent=ep.lsDraft===i?'💋 Lip Sync':'Lip Sync';
+    if(!inT2)ls.disabled=true;
+    ls.addEventListener('click',()=>{
+      if(!ep.top2Draft.includes(i))return;
+      ep.lsDraft=ep.lsDraft===i?null:i;
+      wireEpToggles(idx);
+    });
+    btns.append(t2,ls); row.append(photo,name,btns); wrap.appendChild(row);
+  });
+}
+
+function addNewEpisode() {
+  admEpsDraft.push({id:`ep_${Date.now()}`,number:'',title:'',desc:'',bracket:'orange',closed:false,top2Draft:[],lsDraft:null,isNew:true});
+  renderAdminEpList();
+  addSaveEpisodesBtn();
+  const last=document.getElementById('adm-ep-body-'+(admEpsDraft.length-1));
+  if(last)last.style.display='block';
+}
+
+function addSaveEpisodesBtn() {
+  if(document.getElementById('adm-ep-save-all'))return;
+  const btn=document.createElement('button');
+  btn.className='admin-save';btn.id='adm-ep-save-all';btn.textContent='Save All Episodes';
+  btn.addEventListener('click',saveAllEpisodes);
+  document.getElementById('adm-ep-list').after(btn);
+}
+
+async function saveAllEpisodes() {
+  // read form values back
+  admEpsDraft.forEach((ep,idx)=>{
+    ep.number = document.getElementById('adm-ep-num-'+idx)?.value||ep.number;
+    ep.title  = document.getElementById('adm-ep-title-'+idx)?.value||ep.title;
+    ep.desc   = document.getElementById('adm-ep-desc-'+idx)?.value||ep.desc;
+    ep.bracket= document.getElementById('adm-ep-bracket-'+idx)?.value||ep.bracket;
+    ep.closed = document.getElementById('adm-ep-closed-'+idx)?.checked||false;
+    ep.results= {top2:ep.top2Draft,lipsync:ep.lsDraft};
+  });
+  const btn=document.getElementById('adm-ep-save-all');
+  if(btn){btn.textContent='⏳ Saving…';btn.disabled=true;}
   try {
-    await db.collection('config').doc('episode').set(epData);
-    episode = epData;
-    flashBtn(btn, '✓ Episode Saved!', 'Save Episode Config & Results');
-  } catch(e) {
-    btn.textContent = 'Save Episode Config & Results'; btn.disabled = false;
-    alert('Error saving: ' + e.message);
+    const existingIds=new Set(admEpsDraft.map(e=>e.id));
+    const cur=await db.collection('episodes').get();
+    const dels=[];
+    cur.forEach(d=>{if(!existingIds.has(d.id))dels.push(db.collection('episodes').doc(d.id).delete());});
+    await Promise.all(dels);
+    const saves=admEpsDraft.map(ep=>{
+      const {top2Draft,lsDraft,isNew,...data}=ep;
+      data.results=ep.results;
+      if(isNew)data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      return db.collection('episodes').doc(ep.id).set(data,{merge:true});
+    });
+    await Promise.all(saves);
+    flashBtn(btn,'✓ Episodes Saved!','Save All Episodes');
+  } catch(e){
+    alert('Error: '+e.message);
+    if(btn){btn.textContent='Save All Episodes';btn.disabled=false;}
+  }
+}
+
+async function saveGlobalSettings() {
+  const btn=document.getElementById('adm-global-save');
+  btn.textContent='⏳ Saving…';btn.disabled=true;
+  const locked=document.getElementById('adm-global-lock').checked;
+  try {
+    await db.collection('config').doc('settings').set({globalLocked:locked},{merge:true});
+    globalLocked=locked; applyGlobalLock(); refreshAllBrackets();
+    flashBtn(btn,'✓ Settings Saved!','Save Global Settings');
+  } catch(e){
+    alert('Error: '+e.message);
+    btn.textContent='Save Global Settings';btn.disabled=false;
   }
 }
 
@@ -1270,12 +1379,57 @@ function flashBtn(btn, successText, originalText) {
 // ═══════════════════════════════════════════════════
 //  ⑬ NAME
 // ═══════════════════════════════════════════════════
-function setName(nm) {
+async function setName(nm) {
   nm = (nm||'').trim(); if (!nm) return;
-  myName = nm; localStorage.setItem('as11_name', nm);
+
+  // Show a loading state on the button while we check Firestore
+  const btn = document.getElementById('name-btn');
+  const originalText = btn.textContent;
+  btn.textContent = '⏳ Loading…'; btn.disabled = true;
+
+  try {
+    const doc = await db.collection('entries').doc(nm).get();
+
+    if (doc.exists) {
+      // ── Returning player — restore everything from Firestore ──
+      const data = doc.data();
+      myPicks  = data.picks  || {orange:[],purple:[],pink:[]};
+      myWeekly = data.weekly || {};
+      isLocked = !!(data.lockedAt); // if they locked before, keep locked
+
+      // Persist restored data to localStorage for this device
+      localStorage.setItem('as11_picks',  JSON.stringify(myPicks));
+      localStorage.setItem('as11_weekly', JSON.stringify(myWeekly));
+      if (isLocked) localStorage.setItem('as11_locked', 'true');
+      else          localStorage.removeItem('as11_locked');
+
+      // Refresh all UI with restored picks
+      refreshAllBrackets();
+      refreshOverallScore();
+
+      if (isLocked) {
+        showLockedBanner();
+        document.getElementById('brackets-container').style.opacity = '.5';
+        document.getElementById('brackets-container').style.pointerEvents = 'none';
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('submit-note').style.display = 'none';
+        document.getElementById('locked-indicator').style.display = '';
+      }
+    }
+    // If no doc exists: new player, start fresh (current state is already empty defaults)
+
+  } catch(err) {
+    console.warn('Could not fetch existing picks:', err);
+    // Non-fatal — just proceed as a new player
+  }
+
+  // Finish login regardless of whether we found data
+  myName = nm;
+  localStorage.setItem('as11_name', nm);
   document.getElementById('name-section').style.display = 'none';
   document.getElementById('welcome-bar').style.display = 'flex';
   document.getElementById('display-name').textContent = nm;
+  btn.textContent = originalText; btn.disabled = false;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1315,7 +1469,8 @@ document.getElementById('edit-btn').addEventListener('click', () => {
   document.getElementById('locked-indicator').style.display='none';
 });
 document.getElementById('admin-save').addEventListener('click', saveOverallResults);
-document.getElementById('adm-ep-save').addEventListener('click', saveEpisodeConfig);
+document.getElementById('adm-global-save').addEventListener('click', saveGlobalSettings);
+document.getElementById('adm-add-ep').addEventListener('click', addNewEpisode);
 
 // Password gate
 document.getElementById('pwd-btn').addEventListener('click', checkPwd);
@@ -1333,6 +1488,111 @@ function checkPwd() {
 }
 
 // ═══════════════════════════════════════════════════
+//  PLAYER PROFILE
+// ═══════════════════════════════════════════════════
+async function openProfile(playerName) {
+  const overlay=document.getElementById('profile-overlay');
+  const body=document.getElementById('profile-body');
+  document.getElementById('profile-name').textContent=playerName+"'s Picks";
+  document.getElementById('profile-score-line').textContent='';
+  body.innerHTML='<div class="lb-empty"><span class="spinner"></span> Loading…</div>';
+  overlay.style.pointerEvents='all';
+  overlay.style.background='rgba(6,6,13,.7)';
+  overlay.style.backdropFilter='blur(6px)';
+  document.getElementById('profile-sheet').style.transform='translateY(0)';
+  document.body.style.overflow='hidden';
+  try {
+    const doc=await db.collection('entries').doc(playerName).get();
+    if(!doc.exists){body.innerHTML='<div class="lb-empty">No picks found.</div>';return;}
+    const data=doc.data();
+    const picks=data.picks||{orange:[],purple:[],pink:[]};
+    const weekly=data.weekly||{};
+    const oPts=calcOverall(picks); const wPts=calcWeeklyAll(weekly);
+    document.getElementById('profile-score-line').textContent=`${oPts+wPts} pts total · ${oPts} overall · ${wPts} weekly`;
+    let html='';
+    // Top 6
+    html+=`<div style="font-family:Bebas Neue;font-size:1.5rem;letter-spacing:.06em;margin-bottom:1.2rem">${playerName.split(' ')[0]}'s Top 6 <span style="color:var(--muted);font-size:1rem">· overall picks</span></div>`;
+    html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2.5rem">`;
+    for(const b of COLORS){
+      const w=winners[b]||[];
+      html+=`<div style="border-radius:var(--r);overflow:hidden;border:1px solid var(--border);position:relative">
+        <div style="height:3px;background:linear-gradient(90deg,var(--${b}),${b==='orange'?'#ffb070':b==='purple'?'#d8aaff':'#ff80c0'})"></div>
+        <div style="font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;padding:.6rem .8rem .4rem;color:var(--${b})">${BRACKETS[b].label}</div>`;
+      if((picks[b]||[]).length){
+        picks[b].forEach(i=>{
+          const q=BRACKETS[b].queens[i];if(!q)return;
+          const correct=w.length&&w.includes(i); const wrong=w.length&&!w.includes(i);
+          html+=`<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .8rem;border-top:1px solid var(--border)">
+            <img src="${q.img}" loading="lazy" onerror="this.src='${FALLBACK}'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top center;border:2px solid ${correct?'var(--gold)':wrong?'var(--pink)':'var(--border)'};background:var(--card2);${wrong?'opacity:.5':''}"/>
+            <div style="font-size:.75rem;font-weight:500;color:${correct?'var(--gold)':wrong?'var(--muted)':'var(--text)'};${wrong?'text-decoration:line-through':''}">
+              ${q.name}${correct?' ✓':wrong?' ✗':''}
+            </div>
+          </div>`;
+        });
+      } else {
+        html+=`<div style="padding:.8rem;font-size:.72rem;color:var(--muted);font-style:italic">No picks</div>`;
+      }
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+    // Weekly
+    if(episodes.length){
+      html+=`<div style="font-family:Bebas Neue;font-size:1.5rem;letter-spacing:.06em;margin-bottom:1.2rem">Weekly Picks</div>`;
+      for(const ep of episodes){
+        const epPick=weekly[ep.id];
+        const resTop2=(ep.results||{}).top2||[]; const resLs=(ep.results||{}).lipsync; const hasRes=resTop2.length>0;
+        html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.2rem;margin-bottom:.8rem;display:grid;grid-template-columns:1fr auto;align-items:center;gap:1rem">
+          <div>
+            <div style="font-size:.85rem;font-weight:500;margin-bottom:.2rem">${ep.title||ep.number}</div>
+            <div style="font-size:.65rem;color:var(--muted);letter-spacing:.08em">${ep.number} · ${BRACKETS[ep.bracket].label} Bracket</div>
+          </div>
+          <div style="display:flex;gap:.6rem;align-items:center" id="pep2-${ep.id}"></div>
+        </div>`;
+      }
+    }
+    body.innerHTML=html;
+    // populate ep images
+    for(const ep of episodes){
+      const el=body.querySelector('#pep2-'+ep.id);
+      if(!el)continue;
+      const epPick=weekly[ep.id];
+      const resTop2=(ep.results||{}).top2||[]; const resLs=(ep.results||{}).lipsync; const hasRes=resTop2.length>0;
+      if(!epPick||!epPick.top2||!epPick.top2.length){el.innerHTML='<span style="font-size:.72rem;color:var(--muted);font-style:italic">No picks</span>';continue;}
+      epPick.top2.forEach(i=>{
+        const q=BRACKETS[ep.bracket].queens[i];if(!q)return;
+        const correct=hasRes&&resTop2.includes(i),wrong=hasRes&&!resTop2.includes(i);
+        const wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:.3rem';
+        const img=mkImg(q.img,'');
+        img.style.cssText=`width:38px;height:38px;border-radius:50%;object-fit:cover;object-position:top center;border:2px solid ${correct?'var(--gold)':wrong?'var(--pink)':'var(--orange)'};background:var(--card2);${wrong?'opacity:.4':''}`;
+        const lbl=document.createElement('div');lbl.style.cssText='font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em';lbl.textContent='top 2';
+        wrap.append(img,lbl);el.appendChild(wrap);
+      });
+      if(epPick.lipsync!=null){
+        const i=epPick.lipsync,q=BRACKETS[ep.bracket].queens[i];
+        if(q){
+          const correct=hasRes&&i===resLs,wrong=hasRes&&i!==resLs;
+          const wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:.3rem';
+          const img=mkImg(q.img,'');
+          img.style.cssText=`width:38px;height:38px;border-radius:50%;object-fit:cover;object-position:top center;border:2px solid ${correct?'var(--gold)':wrong?'var(--pink)':'var(--pink)'};background:var(--card2);${wrong?'opacity:.4':''}`;
+          const lbl=document.createElement('div');lbl.style.cssText='font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em';lbl.textContent='lip sync';
+          wrap.append(img,lbl);el.appendChild(wrap);
+        }
+      }
+    }
+  } catch(err){body.innerHTML='<div class="lb-empty">⚠️ Error loading profile.</div>';}
+}
+
+function closeProfile() {
+  const overlay=document.getElementById('profile-overlay');
+  document.getElementById('profile-sheet').style.transform='translateY(100%)';
+  setTimeout(()=>{overlay.style.pointerEvents='none';overlay.style.background='';overlay.style.backdropFilter='';},400);
+  document.body.style.overflow='';
+}
+
+// also need calcWeeklyAll alias
+function calcWeeklyAll(weeklyPicks){return calcWeekly(weeklyPicks);}
+
+// ═══════════════════════════════════════════════════
 //  ⑯ INIT
 // ═══════════════════════════════════════════════════
 if (myName) {
@@ -1347,6 +1607,7 @@ refreshOverallScore();
 loadConfig().then(() => {
   refreshAllBrackets();
   refreshOverallScore();
+  applyGlobalLock();
   if (isLocked) showLockedBanner();
   watchConfig();
 });
@@ -1365,5 +1626,21 @@ if (isLocked) {
 // config/episode    → {id, number, title, desc, bracket, closed, results:{top2:[0,3], lipsync:3}}
 // entries/{name}    → {name, picks:{...}, weekly:{ep_1:{top2:[0,3], lipsync:3, locked:true}}}
 </script>
+<!-- PLAYER PROFILE OVERLAY -->
+<div id="profile-overlay" style="position:fixed;inset:0;z-index:8000;display:flex;align-items:flex-end;pointer-events:none;transition:background .3s" onclick="if(event.target===this)closeProfile()">
+  <div id="profile-sheet" style="width:100%;max-height:92vh;overflow-y:auto;background:var(--bg);border-top:1px solid var(--borderb);border-radius:20px 20px 0 0;transform:translateY(100%);transition:transform .4s cubic-bezier(.16,1,.3,1);padding:0 0 3rem">
+    <div style="width:40px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 0"></div>
+    <div style="padding:1.5rem 1.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+      <div>
+        <div id="profile-name" style="font-family:Bebas Neue;font-size:2rem;letter-spacing:.05em;background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text"></div>
+        <div id="profile-score-line" style="font-size:.7rem;color:var(--muted);letter-spacing:.1em"></div>
+      </div>
+      <button onclick="closeProfile()" style="background:none;border:1px solid var(--border);color:var(--muted);width:36px;height:36px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="profile-body" style="padding:1.5rem">
+      <div class="lb-empty"><span class="spinner"></span> Loading…</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
