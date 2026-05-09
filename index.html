@@ -502,6 +502,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
         <button id="adm-add-ep" style="font-family:'Bebas Neue';font-size:.9rem;letter-spacing:.08em;padding:.4rem 1rem;border:1px solid var(--borderb);border-radius:4px;background:transparent;color:var(--text);cursor:pointer">+ Add Episode</button>
       </div>
       <div id="adm-ep-list"><div style="padding:2rem;text-align:center;font-size:.8rem;color:var(--muted)">No episodes yet — click + Add Episode.</div></div>
+      <button class="admin-save" id="adm-ep-save-all" style="display:none">Save All Episodes</button>
 
       <!-- OVERALL BRACKET RESULTS -->
       <div class="admin-section">🏆 Overall Bracket Results</div>
@@ -1085,9 +1086,17 @@ async function loadConfig() {
     if (wDoc.exists) { winners = wDoc.data(); adminDraft = JSON.parse(JSON.stringify(winners)); }
     const sDoc = await db.collection('config').doc('settings').get();
     if (sDoc.exists) globalLocked = !!(sDoc.data().globalLocked);
+
+    // Try new episodes collection first
     const epSnap = await db.collection('episodes').orderBy('createdAt','asc').get();
     episodes = [];
     epSnap.forEach(d => episodes.push({id:d.id,...d.data()}));
+
+    // If empty, fall back to old config/episode — no Firestore changes needed on your end!
+    if (!episodes.length) {
+      const oldEp = await db.collection('config').doc('episode').get();
+      if (oldEp.exists) episodes = [oldEp.data()];
+    }
   } catch(e) { console.warn('loadConfig:', e); }
 }
 
@@ -1101,9 +1110,16 @@ function watchConfig() {
   db.collection('config').doc('settings').onSnapshot(d => {
     if (d.exists) { globalLocked=!!(d.data().globalLocked); applyGlobalLock(); refreshAllBrackets(); }
   });
-  db.collection('episodes').orderBy('createdAt','asc').onSnapshot(snap => {
+  db.collection('episodes').orderBy('createdAt','asc').onSnapshot(async snap => {
     episodes = [];
     snap.forEach(d => episodes.push({id:d.id,...d.data()}));
+    // Fall back to old config/episode if new collection is still empty
+    if (!episodes.length) {
+      try {
+        const oldEp = await db.collection('config').doc('episode').get();
+        if (oldEp.exists) episodes = [oldEp.data()];
+      } catch(e) {}
+    }
     if (document.getElementById('panel-weekly').classList.contains('active')) renderWeekly();
   });
 }
@@ -1193,17 +1209,17 @@ function buildEpisodeAdminList() {
     lsDraft:   (ep.results||{}).lipsync ?? null
   }));
   renderAdminEpList();
-  if (admEpsDraft.length && !document.getElementById('adm-ep-save-all')) {
-    addSaveEpisodesBtn();
-  }
 }
 
 function renderAdminEpList() {
   const wrap = document.getElementById('adm-ep-list');
+  const saveBtn = document.getElementById('adm-ep-save-all');
   if (!admEpsDraft.length) {
     wrap.innerHTML = '<div style="padding:2rem;text-align:center;font-size:.8rem;color:var(--muted)">No episodes yet — click + Add Episode.</div>';
+    if (saveBtn) saveBtn.style.display = 'none';
     return;
   }
+  if (saveBtn) saveBtn.style.display = 'block';
   wrap.innerHTML = '';
   admEpsDraft.forEach((ep, idx) => {
     const item = document.createElement('div');
@@ -1304,17 +1320,13 @@ function wireEpToggles(idx) {
 function addNewEpisode() {
   admEpsDraft.push({id:`ep_${Date.now()}`,number:'',title:'',desc:'',bracket:'orange',closed:false,top2Draft:[],lsDraft:null,isNew:true});
   renderAdminEpList();
-  addSaveEpisodesBtn();
+  // open the newly added episode
   const last=document.getElementById('adm-ep-body-'+(admEpsDraft.length-1));
   if(last)last.style.display='block';
 }
 
 function addSaveEpisodesBtn() {
-  if(document.getElementById('adm-ep-save-all'))return;
-  const btn=document.createElement('button');
-  btn.className='admin-save';btn.id='adm-ep-save-all';btn.textContent='Save All Episodes';
-  btn.addEventListener('click',saveAllEpisodes);
-  document.getElementById('adm-ep-list').after(btn);
+  // button now lives permanently in the HTML — nothing to do here
 }
 
 async function saveAllEpisodes() {
@@ -1471,6 +1483,7 @@ document.getElementById('edit-btn').addEventListener('click', () => {
 document.getElementById('admin-save').addEventListener('click', saveOverallResults);
 document.getElementById('adm-global-save').addEventListener('click', saveGlobalSettings);
 document.getElementById('adm-add-ep').addEventListener('click', addNewEpisode);
+document.getElementById('adm-ep-save-all').addEventListener('click', saveAllEpisodes);
 
 // Password gate
 document.getElementById('pwd-btn').addEventListener('click', checkPwd);
