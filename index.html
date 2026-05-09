@@ -895,8 +895,8 @@ function renderEpBlock(episode, wrap) {
   const submitWrap = document.createElement('div'); submitWrap.className = 'wp-submit-wrap';
   const canSubmit = epPicks.top2.length === 2 && epPicks.lipsync != null && !isWLocked;
   submitWrap.innerHTML = `
-    <button class="wp-submit-btn" id="wp-submit-btn" ${canSubmit?'':'disabled'}>Lock In Weekly Picks</button>
-    <div class="wp-submit-note" id="wp-submit-note">${wpSubmitNote(epPicks)}</div>`;
+    <button class="wp-submit-btn" id="wp-submit-btn-${epId}" ${canSubmit?'':'disabled'}>Lock In Weekly Picks</button>
+    <div class="wp-submit-note" id="wp-submit-note-${epId}">${wpSubmitNote(epPicks)}</div>`;
   wrap.appendChild(submitWrap);
   document.getElementById(`wp-submit-btn-${epId}`).addEventListener('click', () => lockWeeklyPicks(epId));
 }
