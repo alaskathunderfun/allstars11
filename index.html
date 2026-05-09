@@ -779,6 +779,7 @@ function renderEpBlock(episode, wrap) {
   const bracketColor = b; // orange / purple / pink
   const bracketLabel = BRACKETS[b].label;
 
+  const epId = episode.id;
   let html = `
   <div class="ep-card">
     <div class="ep-body">
@@ -845,7 +846,7 @@ function renderEpBlock(episode, wrap) {
       }
     }
     const editBtn = banner.querySelector('#wp-edit-btn');
-    if (editBtn) editBtn.addEventListener('click', () => unlockWeekly());
+    if (editBtn) editBtn.addEventListener('click', () => unlockWeekly(epId));
     return; // don't show pick UI if locked
   }
 
@@ -866,7 +867,7 @@ function renderEpBlock(episode, wrap) {
       <span class="wp-pts-badge">2 distinct queens · <strong>${PTS_TOP2} pts</strong> each</span>
     </div>
     <div class="wp-step-hint">Pick the 2 queens you think will place in the top this week</div>
-    <div class="wp-queen-list" id="wp-list-top2"></div>`;
+    <div class="wp-queen-list" id="wp-list-top2-${epId}"></div>`;
   stepsEl.appendChild(step1);
 
   // STEP 2 — Lip sync
@@ -881,14 +882,14 @@ function renderEpBlock(episode, wrap) {
       </div>
       <span class="wp-pts-badge">must be one of your Top 2 · <strong>${PTS_LIPSYNC} pts</strong></span>
     </div>
-    <div id="wp-ls-area"></div>`;
+    <div id="wp-ls-area-${epId}"></div>`;
   stepsEl.appendChild(step2);
 
   wrap.appendChild(stepsEl);
 
   // Render queen rows for top 2
-  buildWpTop2Rows(queens, epPicks, b);
-  buildWpLsArea(queens, epPicks, b);
+  buildWpTop2Rows(queens, epPicks, b, epId);
+  buildWpLsArea(queens, epPicks, b, epId);
 
   // Submit button
   const submitWrap = document.createElement('div'); submitWrap.className = 'wp-submit-wrap';
@@ -897,7 +898,7 @@ function renderEpBlock(episode, wrap) {
     <button class="wp-submit-btn" id="wp-submit-btn" ${canSubmit?'':'disabled'}>Lock In Weekly Picks</button>
     <div class="wp-submit-note" id="wp-submit-note">${wpSubmitNote(epPicks)}</div>`;
   wrap.appendChild(submitWrap);
-  document.getElementById('wp-submit-btn').addEventListener('click', lockWeeklyPicks);
+  document.getElementById(`wp-submit-btn-${epId}`).addEventListener('click', () => lockWeeklyPicks(epId));
 }
 
 function wpSubmitNote(epPicks) {
@@ -906,8 +907,8 @@ function wpSubmitNote(epPicks) {
   return 'All weekly picks made! Lock them in.';
 }
 
-function buildWpTop2Rows(queens, epPicks, b) {
-  const list = document.getElementById('wp-list-top2');
+function buildWpTop2Rows(queens, epPicks, b, epId) {
+  const list = document.getElementById('wp-list-top2-'+epId);
   if (!list) return;
   list.innerHTML = '';
   queens.forEach((q, i) => {
@@ -921,7 +922,7 @@ function buildWpTop2Rows(queens, epPicks, b) {
       <div class="wp-right"><span class="wp-badge">TOP 2</span></div>`;
     row.addEventListener('click', () => {
       if (isFull || episode.closed) return;
-      const ep = getOrInitEp();
+      const ep = getOrInitEp(epId);
       if (ep.top2.includes(i)) {
         ep.top2 = ep.top2.filter(x=>x!==i);
         // if deselected lipsync queen, clear lipsync too
@@ -935,15 +936,15 @@ function buildWpTop2Rows(queens, epPicks, b) {
   });
 }
 
-function buildWpLsArea(queens, epPicks, b) {
-  const area = document.getElementById('wp-ls-area');
+function buildWpLsArea(queens, epPicks, b, epId) {
+  const area = document.getElementById('wp-ls-area-'+epId);
   if (!area) return;
   if (epPicks.top2.length < 2) {
     area.innerHTML = `<div class="wp-ls-locked">← Complete Step 1 first to unlock the lip sync pick</div>`;
     return;
   }
-  area.innerHTML = `<div class="wp-step-hint">Which of your Top 2 wins the lip sync battle?</div><div class="wp-queen-list" id="wp-list-ls"></div>`;
-  const list = document.getElementById('wp-list-ls');
+  area.innerHTML = `<div class="wp-step-hint">Which of your Top 2 wins the lip sync battle?</div><div class="wp-queen-list" id="wp-list-ls-${epId}"></div>`;
+  const list = document.getElementById('wp-list-ls-'+epId);
   // Only show the 2 top2 picks for the lipsync selection
   epPicks.top2.forEach(i => {
     const q = queens[i];
@@ -956,7 +957,7 @@ function buildWpLsArea(queens, epPicks, b) {
       <div class="wp-right"><span class="wp-badge">LIPSYNC</span></div>`;
     row.addEventListener('click', () => {
       if (episode.closed) return;
-      const ep = getOrInitEp();
+      const ep = getOrInitEp(epId);
       ep.lipsync = (ep.lipsync === i) ? null : i;
       saveLocalWeekly(); renderWeekly();
     });
@@ -964,25 +965,24 @@ function buildWpLsArea(queens, epPicks, b) {
   });
 }
 
-function getOrInitEp() {
-  if (!myWeekly[episode.id]) myWeekly[episode.id] = {top2:[], lipsync:null};
-  return myWeekly[episode.id];
+function getOrInitEp(epId) {
+  if (!myWeekly[epId]) myWeekly[epId] = {top2:[], lipsync:null};
+  return myWeekly[epId];
 }
 
 function saveLocalWeekly() {
   localStorage.setItem('as11_weekly', JSON.stringify(myWeekly));
 }
 
-async function lockWeeklyPicks() {
+async function lockWeeklyPicks(epId) {
   if (!myName) { alert("Enter your drag name first!"); return; }
-  const ep = myWeekly[episode.id];
+  const ep = myWeekly[epId];
   if (!ep || ep.top2.length < 2 || ep.lipsync == null) return;
-  const btn = document.getElementById('wp-submit-btn');
-  btn.textContent = '⏳ Saving…'; btn.disabled = true;
+  const btn = document.getElementById('wp-submit-btn-'+epId);
+  if(btn){btn.textContent = '⏳ Saving…'; btn.disabled = true;}
   try {
     ep.locked = true;
     saveLocalWeekly();
-    // merge weekly picks into player's Firestore entry
     await db.collection('entries').doc(myName).set({
       name: myName,
       weekly: myWeekly
@@ -992,13 +992,14 @@ async function lockWeeklyPicks() {
     alert('Error saving: ' + err.message);
     ep.locked = false;
     saveLocalWeekly();
-    btn.textContent = 'Lock In Weekly Picks'; btn.disabled = false;
+    if(btn){btn.textContent = 'Lock In Weekly Picks'; btn.disabled = false;}
   }
 }
 
-function unlockWeekly() {
-  if (!episode || episode.closed) return;
-  const ep = myWeekly[episode.id];
+function unlockWeekly(epId) {
+  const epCfg = episodes.find(e => e.id===epId);
+  if (epCfg && epCfg.closed) return;
+  const ep = myWeekly[epId];
   if (ep) ep.locked = false;
   saveLocalWeekly();
   renderWeekly();
