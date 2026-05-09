@@ -261,6 +261,19 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .wp-submit-btn:disabled{opacity:.3;cursor:not-allowed;transform:none;box-shadow:none}
 .wp-submit-note{font-size:.8rem;letter-spacing:.05em;color:var(--muted);margin-top:.8rem}
 
+/* spoiler toggle */
+.spoiler-toggle-wrap{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--borderb);border-radius:var(--r);padding:.85rem 1.2rem;margin-bottom:1.2rem}
+.spoiler-toggle-label{font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:.2rem}
+.spoiler-toggle-label strong{color:var(--text);font-size:.85rem}
+.spoiler-tog{position:relative;width:52px;height:28px;flex-shrink:0}
+.spoiler-tog input{opacity:0;width:0;height:0}
+.spoiler-tog-sl{position:absolute;inset:0;background:var(--card);border:1px solid var(--borderb);border-radius:14px;cursor:pointer;transition:background .2s}
+.spoiler-tog-sl::before{content:'';position:absolute;width:22px;height:22px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:all .25s cubic-bezier(.16,1,.3,1)}
+.spoiler-tog input:checked+.spoiler-tog-sl{background:var(--gold);border-color:var(--gold)}
+.spoiler-tog input:checked+.spoiler-tog-sl::before{transform:translateX(24px);background:#000}
+.spoiler-score-reveal{display:none;animation:pi .3s cubic-bezier(.16,1,.3,1) both}
+.spoiler-score-reveal.show{display:block}
+
 /* no episode */
 .no-ep{text-align:center;padding:5rem 1.5rem;color:var(--muted)}
 .no-ep-icon{font-size:3rem;margin-bottom:1rem}
@@ -812,31 +825,89 @@ function renderEpBlock(episode, container) {
     const bTitle = document.createElement('div'); bTitle.className = 'wp-locked-title';
     bTitle.textContent = hasResults ? '🏆 Results Are In' : '✨ Picks Locked';
     const bSub = document.createElement('div'); bSub.className = 'wp-locked-sub';
-    bSub.textContent = hasResults ? 'See how you did below' : 'Check back after the episode airs!';
+    bSub.textContent = hasResults ? 'Toggle the spoiler switch to see how you did!' : 'Check back after the episode airs!';
+    banner.append(bTitle, bSub);
+
+    // Always show picks without result markers (no spoilers by default)
     const bDisp = document.createElement('div'); bDisp.className = 'wp-picks-display';
-    banner.append(bTitle, bSub, bDisp);
-    // populate pick items
     epPicks.top2.forEach(i => {
       const q = queens[i]; if (!q) return;
-      const correct = hasResults && resTop2.includes(i);
-      const wrong   = hasResults && !resTop2.includes(i);
       const item = document.createElement('div'); item.className = 'wp-pick-item';
       const img = mkImg(q.img, 'wp-pick-img top2');
       const info = document.createElement('div'); info.className = 'wp-pick-info';
-      info.innerHTML = `<div class="wp-pick-name ${correct?'correct':wrong?'wrong':''}">${q.name}${correct?' ✓':wrong?' ✗':''}</div><div class="wp-pick-type">top 2 · ${PTS_TOP2}pts</div>`;
+      info.innerHTML = `<div class="wp-pick-name">${q.name}</div><div class="wp-pick-type">top 2 · ${PTS_TOP2}pts</div>`;
       item.append(img, info); bDisp.appendChild(item);
     });
     if (epPicks.lipsync != null) {
       const q = queens[epPicks.lipsync]; if (q) {
-        const correct = hasResults && epPicks.lipsync === resLs;
-        const wrong   = hasResults && epPicks.lipsync !== resLs;
         const item = document.createElement('div'); item.className = 'wp-pick-item';
         const img = mkImg(q.img, 'wp-pick-img lipsync');
         const info = document.createElement('div'); info.className = 'wp-pick-info';
-        info.innerHTML = `<div class="wp-pick-name ${correct?'correct':wrong?'wrong':''}">${q.name}${correct?' ✓':wrong?' ✗':''}</div><div class="wp-pick-type">lip sync · ${PTS_LIPSYNC}pts</div>`;
+        info.innerHTML = `<div class="wp-pick-name">${q.name}</div><div class="wp-pick-type">lip sync · ${PTS_LIPSYNC}pts</div>`;
         item.append(img, info); bDisp.appendChild(item);
       }
     }
+    banner.appendChild(bDisp);
+
+    // Spoiler toggle — only show if results exist
+    if (hasResults) {
+      const spoilerKey = 'as11_spoiler_' + epId;
+      const spoilerOn = localStorage.getItem(spoilerKey) === 'true';
+
+      const togWrap = document.createElement('div'); togWrap.className = 'spoiler-toggle-wrap';
+      const togLabel = document.createElement('div'); togLabel.className = 'spoiler-toggle-label';
+      togLabel.innerHTML = `<strong>&#128065; I’ve watched this episode</strong>`;
+      togLabel.innerHTML += `<span style="font-size:.72rem;color:var(--muted);display:block">Reveal your results &amp; score</span>`;
+      const togEl = document.createElement('label'); togEl.className = 'spoiler-tog';
+      const togInput = document.createElement('input'); togInput.type = 'checkbox'; togInput.checked = spoilerOn;
+      const togSlider = document.createElement('span'); togSlider.className = 'spoiler-tog-sl';
+      togEl.append(togInput, togSlider);
+      togWrap.append(togLabel, togEl);
+      banner.appendChild(togWrap);
+
+      // Revealed results section
+      const reveal = document.createElement('div'); reveal.className = `spoiler-score-reveal${spoilerOn?' show':''}`;
+
+      // score bar
+      const t2Correct = (epPicks.top2||[]).filter(i => resTop2.includes(i)).length;
+      const lsCorrect = epPicks.lipsync != null && epPicks.lipsync === resLs;
+      const weeklyPts = t2Correct*PTS_TOP2+(lsCorrect?PTS_LIPSYNC:0);
+      const sb = document.createElement('div'); sb.className = 'wp-scorebar';
+      sb.style.marginTop = '1rem';
+      sb.innerHTML = `<div class="wp-sc"><div class="wp-sc-lbl">Top 2 Correct</div><div class="wp-sc-val">${t2Correct}<span class="wp-sc-unit">/ 2</span></div></div><div class="wp-sc"><div class="wp-sc-lbl">Lip Sync</div><div class="wp-sc-val">${lsCorrect?'✓':'✗'}</div></div><div class="wp-sc wp-sc-total"><div class="wp-sc-lbl">⭐ Score</div><div class="wp-sc-val">${weeklyPts}<span class="wp-sc-unit">pts</span></div></div>`;
+      reveal.appendChild(sb);
+
+      // result-annotated picks
+      const rDisp = document.createElement('div'); rDisp.className = 'wp-picks-display'; rDisp.style.marginTop='.5rem';
+      epPicks.top2.forEach(i => {
+        const q = queens[i]; if (!q) return;
+        const correct = resTop2.includes(i); const wrong = !resTop2.includes(i);
+        const item = document.createElement('div'); item.className = 'wp-pick-item';
+        const img = mkImg(q.img, 'wp-pick-img top2');
+        const info = document.createElement('div'); info.className = 'wp-pick-info';
+        info.innerHTML = `<div class="wp-pick-name ${correct?'correct':'wrong'}">${q.name}${correct?' ✓':' ✗'}</div><div class="wp-pick-type">top 2 · ${PTS_TOP2}pts</div>`;
+        item.append(img, info); rDisp.appendChild(item);
+      });
+      if (epPicks.lipsync != null) {
+        const q = queens[epPicks.lipsync]; if (q) {
+          const correct = epPicks.lipsync === resLs; const wrong = !correct;
+          const item = document.createElement('div'); item.className = 'wp-pick-item';
+          const img = mkImg(q.img, 'wp-pick-img lipsync');
+          const info = document.createElement('div'); info.className = 'wp-pick-info';
+          info.innerHTML = `<div class="wp-pick-name ${correct?'correct':'wrong'}">${q.name}${correct?' ✓':' ✗'}</div><div class="wp-pick-type">lip sync · ${PTS_LIPSYNC}pts</div>`;
+          item.append(img, info); rDisp.appendChild(item);
+        }
+      }
+      reveal.appendChild(rDisp);
+      banner.appendChild(reveal);
+
+      // wire toggle
+      togInput.addEventListener('change', () => {
+        localStorage.setItem(spoilerKey, togInput.checked ? 'true' : 'false');
+        reveal.classList.toggle('show', togInput.checked);
+      });
+    }
+
     if (!episode.closed) {
       const editBtn = document.createElement('button'); editBtn.className = 'wp-edit-btn';
       editBtn.textContent = '← Edit my picks';
